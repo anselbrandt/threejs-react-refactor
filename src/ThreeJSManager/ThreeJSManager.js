@@ -1,10 +1,31 @@
-import React from "react";
-import { createContext, useEffect, useRef, useState } from "react";
+import React, {
+  createContext,
+  forwardRef,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
-import Canvas from "./Canvas";
-import useAnimationFrame from "./useAnimationFrame";
+const CanvasElement = ({ style }, ref) => {
+  const onWindowResize = () => {
+    ref.current.style.height = style.height;
+    ref.current.style.width = style.width;
+  };
 
-export const ThreeJSContext = createContext();
+  useEffect(() => {
+    window.addEventListener("resize", onWindowResize);
+    return () => {
+      window.removeEventListener("resize", onWindowResize);
+    };
+  }, []);
+
+  return (
+    <canvas ref={ref} height={style.height} width={style.width} style={style} />
+  );
+};
+
+const Canvas = forwardRef(CanvasElement);
 
 const ThreeJSManager = ({
   children,
@@ -26,6 +47,25 @@ const ThreeJSManager = ({
     camera: cameraRef.current,
     canvas: canvasRef.current,
     timer,
+  };
+
+  const useAnimationFrame = (callback) => {
+    const callbackRef = useRef(callback);
+    useEffect(() => {
+      callbackRef.current = callback;
+    }, [callback]);
+
+    const loop = (time) => {
+      frameRef.current = requestAnimationFrame(loop);
+      const cb = callbackRef.current;
+      cb(time);
+    };
+
+    const frameRef = useRef();
+    useLayoutEffect(() => {
+      frameRef.current = requestAnimationFrame(loop);
+      return () => cancelAnimationFrame(frameRef.current);
+    }, []);
   };
 
   // setup scene, camera, and renderer, and store references
@@ -64,3 +104,4 @@ const ThreeJSManager = ({
 };
 
 export default ThreeJSManager;
+export const ThreeJSContext = createContext();
